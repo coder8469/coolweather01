@@ -19,6 +19,7 @@ import android.text.TextUtils;
 
 public class Utility {
 
+	private static final String TAG = "Utility";
 	/*
 	 * 解析处理服务器返回的省级数据
 	 */
@@ -90,13 +91,19 @@ public class Utility {
 	public static void handleWeatherResponse(Context context,String response){
 		try {
 			JSONObject jsonObject = new JSONObject(response);
-			JSONObject weatherInfo = jsonObject.getJSONObject("weatherInfo");
+			JSONObject weatherInfo = jsonObject.getJSONObject("weatherinfo");
 			String cityName = weatherInfo.getString("city");
-			String weatherCode = weatherInfo.getString("cityId");
+			String weatherCode = weatherInfo.getString("cityid");
 			String temp1 = weatherInfo.getString("temp1");
 			String temp2 = weatherInfo.getString("temp2");
 			String weatherDesp = weatherInfo.getString("weather");
 			String publishTime = weatherInfo.getString("ptime");
+			LogUtil.info(TAG, cityName);
+			LogUtil.info(TAG, weatherCode);
+			LogUtil.info(TAG, temp1);
+			LogUtil.info(TAG, temp2);
+			LogUtil.info(TAG, weatherDesp);
+			LogUtil.info(TAG, publishTime);
 			saveWeatherInfo( context,cityName,weatherCode,
 						temp1,temp2,weatherDesp,publishTime );
 		} catch (JSONException e) {
@@ -107,8 +114,10 @@ public class Utility {
 	 * 将服务器返回的所有天气信息存储到  SharedPreferences 文件中
 	 */
 	private static void saveWeatherInfo(Context context, String cityName, 
-			String weatherCode, String temp1,
-			String temp2, String weatherDesp, String publishTime) {
+										String weatherCode, String temp1,
+										String temp2, String weatherDesp, 
+										String publishTime) {
+		
 		SimpleDateFormat sdf = new SimpleDateFormat("yyy年m月d日",Locale.CHINA);
 		SharedPreferences.Editor editor = PreferenceManager.
 				getDefaultSharedPreferences(context).edit();
@@ -120,6 +129,7 @@ public class Utility {
 		editor.putString("weather_desp", weatherDesp);
 		editor.putString("publish_time", publishTime);
 		editor.putString("current_date", sdf.format(new Date()));
+		LogUtil.info(TAG+"133", sdf.format(new Date()));
 		editor.commit();		
 	}
 }

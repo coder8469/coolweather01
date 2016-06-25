@@ -12,6 +12,7 @@ import com.coolweather.app.model.County;
 import com.coolweather.app.model.Province;
 import com.coolweather.app.util.HttpCallbackListener;
 import com.coolweather.app.util.HttpUtil;
+import com.coolweather.app.util.LogUtil;
 import com.coolweather.app.util.Utility;
 
 import android.app.Activity;
@@ -34,6 +35,8 @@ import android.widget.Toast;
 
 public class ChooseAreaActivity extends Activity {
 
+	private static final String TAG = "ChooseAreaActivity";
+	
 	public static final int LEVEL_PROVINCE = 0;
 	public static final int LEVEL_CITY = 1;
 	public static final int LEVEL_COUNTY = 2;
@@ -44,6 +47,11 @@ public class ChooseAreaActivity extends Activity {
 	private ArrayAdapter<String> adapter;
 	private CoolWeatherDB coolWeatherDB;
 	private List<String> dataList = new ArrayList<String>();
+	
+	/*
+	 * 判断是否从WeatherActivity中跳转过来
+	 */
+	private boolean isFromWeatherActivity;
 	
 	/*
 	 *省列表
@@ -74,9 +82,11 @@ public class ChooseAreaActivity extends Activity {
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
-		
+		isFromWeatherActivity = getIntent().
+				getBooleanExtra("from_weather_activity", false);
 		SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
-		if(prefs.getBoolean("city_selected", false)){
+		//已经选择了城市且不是从 WeatherActivity 跳转过来，才会直接跳转到 WeatherActivity
+		if(prefs.getBoolean("city_selected", false)&&!isFromWeatherActivity){
 			Intent intent = new Intent(this,WeatherActivity.class);
 			startActivity(intent);
 			finish();
@@ -196,7 +206,8 @@ public class ChooseAreaActivity extends Activity {
 		HttpUtil.sendHttpRequest(address, new HttpCallbackListener(){
 
 			@Override
-			public void onFinish(String response) {
+			public void onFinish(String response) {  
+				LogUtil.info(TAG+"203", response);
 				boolean result = false;
 				if("province".equals(type)){
 					result = Utility.handleProvincesResponse(coolWeatherDB,
@@ -268,12 +279,15 @@ public class ChooseAreaActivity extends Activity {
 	 */
 	@Override
 	public void onBackPressed() {
-		super.onBackPressed();
 		if(currentLevel==LEVEL_COUNTY){
 			queryCities();
 		}else if(currentLevel==LEVEL_CITY){
 			queryProvinces();
 		}else{
+			if(isFromWeatherActivity){
+				Intent intent = new Intent(this,WeatherActivity.class);
+				startActivity(intent);
+			}
 			finish();
 		}
 	}

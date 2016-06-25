@@ -1,23 +1,27 @@
 package com.coolweather.app.activity;
 
 import com.coolweather.app.R;
-import com.coolweather.app.R.id;
-import com.coolweather.app.R.layout;
 import com.coolweather.app.util.HttpCallbackListener;
 import com.coolweather.app.util.HttpUtil;
+import com.coolweather.app.util.LogUtil;
 import com.coolweather.app.util.Utility;
 
 import android.app.Activity;
+import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.preference.PreferenceManager;
 import android.text.TextUtils;
+import android.util.Log;
 import android.view.View;
+import android.view.View.OnClickListener;
 import android.view.Window;
+import android.widget.Button;
 import android.widget.LinearLayout;
 import android.widget.TextView;
+import android.widget.Toast;
 
-public class WeatherActivity extends  Activity {
+public class WeatherActivity extends  Activity implements OnClickListener{
 
 	private LinearLayout weatherInfoLayout;
 	//用于显示城市名
@@ -30,7 +34,13 @@ public class WeatherActivity extends  Activity {
 	private TextView temp1TV;
 	private TextView temp2Tv;
 	//用于显示当前日期
-	private TextView currentDateTV;	
+	private TextView currentDateTV;
+	private static final String TAG = "WActivity";
+	
+	//切换城市按钮
+	private Button switchCityBtn;
+	//更新天气的按钮
+	private Button refreshWeatherBtn;
 	
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
@@ -47,10 +57,19 @@ public class WeatherActivity extends  Activity {
 		temp2Tv = (TextView) findViewById(R.id.temp2);
 		currentDateTV = (TextView) findViewById(R.id.current_date);
 		
-		String countyCode = getIntent().getStringExtra("county_code");
+		/*
+		 * 实例化组件并添加监听
+		 */
+		switchCityBtn = (Button) findViewById(R.id.switch_city);
+		refreshWeatherBtn = (Button) findViewById(R.id.switch_weather);
+		switchCityBtn.setOnClickListener(this);
+		refreshWeatherBtn.setOnClickListener(this);
 		
+		String countyCode = getIntent().getStringExtra("county_code");
+//		LogUtil.info(TAG+"53", countyCode);
 		if(!TextUtils.isEmpty(countyCode)){
 			publishTV.setText("同步中...");
+//			LogUtil.info(TAG+"56", countyCode);
 			weatherInfoLayout.setVisibility(View.INVISIBLE);
 			cityNameTV.setVisibility(View.INVISIBLE);
 			queryWeatherCode( countyCode );
@@ -65,6 +84,7 @@ public class WeatherActivity extends  Activity {
 	private void queryWeatherCode(String countyCode) {
 		String address = "http://www.weather.com.cn"
 				+ "/data/list3/city" + countyCode + ".xml";
+		LogUtil.info(TAG+"71", address);
 		querryFromServer( address,"countyCode" );
 	}
 	/*
@@ -72,37 +92,42 @@ public class WeatherActivity extends  Activity {
 	 */
 	private void queryWeatherInfo(String weatherCode) {
 		String address = "http://www.weather.com.cn"
-				+ "/data/cityinfo" + weatherCode + ".html";
+				+ "/data/cityinfo/" + weatherCode + ".html";   //101230103
+		LogUtil.info(TAG+"80", address);
 		querryFromServer( address,"weatherCode" );
 	}
 	/*
 	 * 根据传入的地址和类型去向服务器查询天气代号或者天气信息
 	 */
-	private void querryFromServer(final String address,final  String type) {
+	private void querryFromServer(final String address,final String type) {
 		HttpUtil.sendHttpRequest(address, new HttpCallbackListener() {
 			
 			@Override
 			public void onFinish(final String response) {
+				LogUtil.info(TAG+"91", type);
 				if("countyCode".equals(type)){
 					if(!TextUtils.isEmpty(response)){
+						LogUtil.info(TAG, response);
 						//从服务器返回的数据中解析出天气代号
 						String[] array = response.split("\\|");
 						if(array!=null&&array.length==2){
 							String weatherCode = array[1];
+							LogUtil.info(TAG, weatherCode);
 							queryWeatherInfo(weatherCode);
 						}
-					}else if("weatherCode".equals(type)){
-						//处理服务器返回的天气信息
-						Utility.handleWeatherResponse(WeatherActivity.this, response);
-						runOnUiThread(new Runnable(){
-
-							@Override
-							public void run() {
-								showWeather();
-							}
-							
-						});
 					}
+				}else if("weatherCode".equals(type)){
+					//处理服务器返回的天气信息
+					LogUtil.info(TAG+"105", type);
+					LogUtil.info(TAG+"106", response);
+					Utility.handleWeatherResponse(WeatherActivity.this, response);
+					runOnUiThread(new Runnable(){
+
+						@Override
+						public void run() {
+							showWeather();
+						}
+					});
 				}
 			}
 			
@@ -124,19 +149,39 @@ public class WeatherActivity extends  Activity {
 	 */
 	private void showWeather() {
 		SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
-//		private LinearLayout weatherInfoLayout;
-//		//用于显示城市名
-//		//用于显示当前日期
-//		private TextView currentDateTV;	
-		
 		cityNameTV.setText(prefs.getString("city_name", ""));
 		temp1TV.setText(prefs.getString("temp1", ""));
 		temp2Tv.setText(prefs.getString("temp2", ""));
 		weatherDespTV.setText(prefs.getString("weather_desp", ""));
-		publishTV.setText(prefs.getString("publish_time", ""));
-		currentDateTV.setText(prefs.getString("publish_date", ""));
+		publishTV.setText("今天"+prefs.getString("publish_time", "") +"发布");
+		currentDateTV.setText(prefs.getString("current_date", ""));
+		LogUtil.info(TAG+"158", prefs.getString("current_date", ""));
+		
 		weatherInfoLayout.setVisibility(View.VISIBLE);
 		cityNameTV.setVisibility(View.VISIBLE);		
+	}
+	
+	@Override
+	public void onClick(View v) {
+		switch (v.getId()) {
+		case R.id.switch_city:
+			Intent intent = new Intent(this,ChooseAreaActivity.class);
+			intent.putExtra("from_weather_activity", true);
+			startActivity(intent);
+			finish();
+			break;
+		case R.id.switch_weather:
+			publishTV.setText("同步中...");
+			SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
+			String weatherCode = prefs.getString("weather_code", "");
+			if(!TextUtils.isEmpty(weatherCode)){
+				LogUtil.info(TAG+"178", weatherCode);
+				queryWeatherInfo(weatherCode);
+			}
+			break;
+		default:
+			break;
+		}
 	}
 }
 
